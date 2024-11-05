@@ -23,17 +23,24 @@ class QWERTYKeyboard:
         "Space": 5 * KEY_WIDTH + 4 * KEY_SPACING
     }
 
-    def __init__(self, root):
+    def __init__(self, root, parent, x_start, y_start):
         self.root = root
-        self.root.title("QWERTY Keyboard")
-        self.canvas = tk.Canvas(root, width=800, height=300, bg="white")
+        self.parent = parent
+        self.canvas = tk.Canvas(self.parent, width=800, height=300, bg="white")
         self.canvas.pack()
         
         # Starting position for the keyboard layout
-        self.x_start, self.y_start = 50, 50
+        self.x_start, self.y_start = x_start, y_start
+
+        # Dictionary to keep track of rectangles by label
+        self.key_rects = {}
 
         # Draw the keyboard
         self.draw_keyboard()
+
+        # Bind key press and release events
+        self.root.bind("<KeyPress>", self.on_key_press)
+        self.root.bind("<KeyRelease>", self.on_key_release)
 
     def draw_keyboard(self):
         # Draw keys for each row
@@ -53,8 +60,11 @@ class QWERTYKeyboard:
             x += self.KEY_WIDTH + self.KEY_SPACING
 
     def draw_key(self, x, y, width, height, label):
-        self.canvas.create_rectangle(x, y, x + width, y + height, fill="lightgrey")
+        rect = self.canvas.create_rectangle(x, y, x + width, y + height, fill="lightgrey")
         self.canvas.create_text(x + width / 2, y + height / 2, text=label, font=("Arial", 16))
+        
+        # Store the rectangle ID with the label for easy lookup
+        self.key_rects[label] = rect
 
     def draw_special_keys(self):
         # Special key positions relative to x_start, y_start
@@ -76,8 +86,30 @@ class QWERTYKeyboard:
             width = self.special_keys[key]
             self.draw_key(x, y, width, self.KEY_HEIGHT, key)
 
+    def highlight_key(self, label):
+        # Change the color of the rectangle associated with the given label to red
+        if label in self.key_rects:
+            rect_id = self.key_rects[label]
+            self.canvas.itemconfig(rect_id, fill="red")
 
-# Initialize the tkinter window and the QWERTYKeyboard
-root = tk.Tk()
-keyboard = QWERTYKeyboard(root)
-root.mainloop()
+    def reset_key(self, label):
+        # Reset the color of the key to lightgrey
+        if label in self.key_rects:
+            rect_id = self.key_rects[label]
+            self.canvas.itemconfig(rect_id, fill="lightgrey")
+
+    def on_key_press(self, event):
+        # Convert the event key to uppercase to match the labels
+        label = event.keysym.upper()
+
+        # Highlight the pressed key if it exists on the keyboard
+        if label in self.key_rects:
+            self.highlight_key(label)
+
+    def on_key_release(self, event):
+        # Convert the event key to uppercase to match the labels
+        label = event.keysym.upper()
+
+        # Reset the key color when it's released
+        if label in self.key_rects:
+            self.reset_key(label)

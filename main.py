@@ -5,8 +5,8 @@ class Application(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Sidebar with Box")
-        self.geometry("800x600")
+        self.title("Teclado espião Portal")
+        self.geometry("1920x1080")
 
         self.sidebar = tk.Frame(self, width=200, bg="gray")
         self.sidebar.pack(side="left", fill="y")
@@ -29,7 +29,7 @@ class Application(tk.Tk):
         self.box = tk.Frame(self.main_frame, bg="white",)
         self.box.pack(padx=20, pady=20)
 
-        self.canvas = QWERTYKeyboard(self)
+        self.canvas = QWERTYKeyboard(self, self.main_frame, self.main_frame.winfo_width()/2 + 100, self.main_frame.winfo_height()/2)
     def button1_clicked(self):
         print("Button 1 clicked")
 
