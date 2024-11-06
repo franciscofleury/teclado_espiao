@@ -1,4 +1,5 @@
 import tkinter as tk
+from datetime import datetime
 
 class QWERTYKeyboard:
     # Constants for key sizes and spacing
@@ -23,6 +24,11 @@ class QWERTYKeyboard:
         "Space": 5 * KEY_WIDTH + 4 * KEY_SPACING
     }
 
+    # Key type buffer for routine recording
+    buffer = []
+    last_action_timestamp = -1
+    recording = False
+
     def __init__(self, root, parent, x_start, y_start):
         self.root = root
         self.parent = parent
@@ -35,12 +41,21 @@ class QWERTYKeyboard:
         # Dictionary to keep track of rectangles by label
         self.key_rects = {}
 
+        # Dictionary to keep track of key release timers
+        self.key_timers = {}
+
+        self.action_registered = {}
+        self.current_pressed = []
+        self.handler_func = None
+
         # Draw the keyboard
         self.draw_keyboard()
 
         # Bind key press and release events
         self.root.bind("<KeyPress>", self.on_key_press)
         self.root.bind("<KeyRelease>", self.on_key_release)
+
+        self.start_recording()
 
     def draw_keyboard(self):
         # Draw keys for each row
@@ -98,18 +113,57 @@ class QWERTYKeyboard:
             rect_id = self.key_rects[label]
             self.canvas.itemconfig(rect_id, fill="lightgrey")
 
+    def start_recording(self):
+        self.disabled_func = self.handler_func
+        self.handler_func = None
+        self.last_action_timestamp = datetime.now()
+        self.buffer = []
+
+    def stop_recording(self):
+        buffer = self.buffer
+        self.buffer = []
+        self.handler_func = self.disabled_func
+        self.disabled_func = None
+        return buffer
+    
+    def bind_action_handler(self, handler_func):
+        self.handler_func = handler_func
+
+    def register_action(self, label, mode):
+        
+        now = datetime.now()
+        elapsed_time = now - self.last_action_timestamp
+        if elapsed_time.seconds >= 1:
+            wait_action = ("WAIT", elapsed_time.seconds)
+            self.buffer.append(wait_action)
+        
+        action = (label, mode)
+        self.buffer.append(action)
+        
+        self.last_action_timestamp = now
+        self.action_registered[label] = (mode, now)
+        if self.handler_func != None:
+            self.handler_func(action)
+
+    def press_key(self, label):
+        self.highlight_key(label)
+        self.register_action(label, "PRESSED")
+        self.current_pressed.append(label)
+
+    def release_key(self, label):
+        self.reset_key(label)
+        self.register_action(label, "RELEASED")
+        self.current_pressed.remove(label)
+
     def on_key_press(self, event):
-        # Convert the event key to uppercase to match the labels
         label = event.keysym.upper()
 
-        # Highlight the pressed key if it exists on the keyboard
-        if label in self.key_rects:
-            self.highlight_key(label)
+        if label in self.key_timers:
+            self.root.after_cancel(self.key_timers[label])
+            del self.key_timers[label]
+        if label not in self.current_pressed:
+            self.press_key(label)
 
     def on_key_release(self, event):
-        # Convert the event key to uppercase to match the labels
         label = event.keysym.upper()
-
-        # Reset the key color when it's released
-        if label in self.key_rects:
-            self.reset_key(label)
+        self.key_timers[label] = self.root.after(50, lambda: self.release_key(label))
