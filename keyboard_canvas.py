@@ -28,6 +28,7 @@ class QWERTYKeyboard:
     buffer = []
     last_action_timestamp = -1
     recording = False
+    mode = "listen"
 
     def __init__(self, root, parent, x_start, y_start):
         self.root = root
@@ -47,15 +48,10 @@ class QWERTYKeyboard:
         self.action_registered = {}
         self.current_pressed = []
         self.handler_func = None
+        self.last_action_timestamp = datetime.now()
 
         # Draw the keyboard
         self.draw_keyboard()
-
-        # Bind key press and release events
-        self.root.bind("<KeyPress>", self.on_key_press)
-        self.root.bind("<KeyRelease>", self.on_key_release)
-
-        self.start_recording()
 
     def draw_keyboard(self):
         # Draw keys for each row
@@ -112,19 +108,20 @@ class QWERTYKeyboard:
         if label in self.key_rects:
             rect_id = self.key_rects[label]
             self.canvas.itemconfig(rect_id, fill="lightgrey")
+    
+    def bind_keys(self):
+        self.root.bind("<KeyPress>", self.on_key_press)
+        self.root.bind("<KeyRelease>", self.on_key_release)
 
-    def start_recording(self):
-        self.disabled_func = self.handler_func
-        self.handler_func = None
-        self.last_action_timestamp = datetime.now()
-        self.buffer = []
-
-    def stop_recording(self):
-        buffer = self.buffer
-        self.buffer = []
-        self.handler_func = self.disabled_func
-        self.disabled_func = None
-        return buffer
+    def set_mode(self, new_mode, param=None):
+        if new_mode in ["listen", "recording", "typing"]:
+            self.mode = new_mode
+            print("new_mode", new_mode)
+        else:
+            print("invalid_mode", new_mode)
+        
+        if self.mode == "typing":
+            self.handler_func = param
     
     def bind_action_handler(self, handler_func):
         self.handler_func = handler_func

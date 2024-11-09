@@ -15,56 +15,88 @@ class Application(tk.Tk):
         self.button_frame = tk.Frame(self.sidebar, bg="gray")
         self.button_frame.pack(side="top", fill="x")
 
-        self.button1 = tk.Button(self.button_frame, text="HOME", bg="gray", fg="black", height=5, command=self.button1_clicked)
-        self.button1.pack(fill="x")
+        self.home_button = tk.Button(self.button_frame, text="HOME", bg="gray", fg="black", height=5, command=self.go_to_home)
+        self.home_button.pack(fill="x")
 
-        self.button2 = tk.Button(self.button_frame, text="ROTINAS", bg="gray", fg="black", height=5, command=self.button2_clicked)
-        self.button2.pack(fill="x")
+        self.routine_button = tk.Button(self.button_frame, text="ROTINAS", bg="gray", fg="black", height=5, command=self.go_to_routine)
+        self.routine_button.pack(fill="x")
 
-        self.button3 = tk.Button(self.button_frame, text="LOGS", bg="gray", fg="black", height=5, command=self.button3_clicked)
-        self.button3.pack(fill="x")
+        self.log_button = tk.Button(self.button_frame, text="LOGS", bg="gray", fg="black", height=5, command=self.go_to_log)
+        self.log_button.pack(fill="x")
 
-        self.main_frame = tk.Frame(self, bg="white")
-        self.main_frame.pack(side="right", fill="both", expand=True)
+        # Create main frame to stack content frames
+        self.main_container = tk.Frame(self)
+        self.main_container.pack(side="right", fill="both", expand=True)
 
-        self.text_box = tk.Text(self.main_frame, width=100, height=10, bg="white")
-        self.text_box.pack(padx=20, pady=20)
-        
-        self.box = tk.Frame(self.main_frame, bg="white",)
-        self.box.pack(padx=20, pady=20)
+        self.frames = {}
+        self.create_frames()
+        self.show_frame("Home")
 
-        self.canvas = QWERTYKeyboard(self, self.main_frame, self.main_frame.winfo_width()/2 + 100, self.main_frame.winfo_height()/2)
+    def create_home_screen(self):
+        main_frame = tk.Frame(self.main_container)
+        text_box = tk.Text(main_frame, width=100, height=10, bg="white")
+        text_box.pack(padx=20, pady=20)
+
+        keyboard = QWERTYKeyboard(self, main_frame, main_frame.winfo_width()/2 + 100, main_frame.winfo_height()/2 + 20)
+        keyboard.set_mode("typing", lambda action: print(action))
+
+        return (main_frame, keyboard)
+    
+    def create_routine_screen(self):
+        main_frame = tk.Frame(self.main_container)
+        text_box = tk.Text(main_frame, name="text_box", width=100, height=10, bg="white")
+        text_box.pack(padx=20, pady=20)
+
+        keyboard = QWERTYKeyboard(self, main_frame, main_frame.winfo_width()/2 + 100, main_frame.winfo_height()/2 + 20)
+        keyboard.set_mode("typing", lambda action: None)
         
         self.is_recording = False
 
-        self.record_button = tk.Button(self.main_frame, text="RECORD", bg="gray", fg="black", command=self.record_button)
-        self.record_button.pack()
+        record_button = tk.Button(main_frame, name="record_button", text="RECORD", bg="gray", fg="black", command=self.toggle_record)
+        record_button.pack()
     
-    def record_button(self):
+        return (main_frame, keyboard)
+    
+    def toggle_record(self):
         if self.is_recording:
-            buffer = self.canvas.stop_recording()
-            self.text_box.delete("1.0", "end")
-            self.text_box.insert("1.0", " ".join([str(action) for action in buffer]))
-            self.record_button.config(text="RECORD")
+            self.frames["Routines"][0].children["text_box"].delete("1.0", "end")
+            self.frames["Routines"][1].set_mode("typing", lambda action: None)
+            self.frames["Routines"][0].children["record_button"].config(text="RECORD")
         else:
-            self.canvas.start_recording()
-            self.record_button.config(text="STOP")
+            print(self.frames["Routines"][0].children)
+            self.frames["Routines"][1].set_mode("typing", lambda action: self.frames["Routines"][0].children["text_box"].insert("end", str(action)+" "))
+            self.frames["Routines"][0].children["record_button"].config(text="STOP")
         self.is_recording = not self.is_recording
+
+    def create_frames(self):
+        # Home Frame
+        self.frames["Home"] = self.create_home_screen()
+
+        # Routines Frame
+        self.frames["Routines"] = self.create_routine_screen()
+
+        for frame in self.frames.values():
+            frame[0].place(in_=self.main_container, relwidth=1, relheight=1)
+
+    def show_frame(self, frame_name):
+        # Hide all frames
+        for frame in self.frames.values():
+            frame[0].place_forget()
+        
+        # Show the selected frame
+        self.frames[frame_name][0].place(in_=self.main_container, relwidth=1, relheight=1)
+        if self.frames[frame_name][1] != None:
+            self.frames[frame_name][1].bind_keys()
     
-    def button1_clicked(self):
-        print("Button 1 clicked")
+    def go_to_home(self):
+        self.show_frame("Home")
 
-    def button2_clicked(self):
-        print("Button 2 clicked")
+    def go_to_routine(self):
+        self.show_frame("Routines")
 
-    def button3_clicked(self):
-        print("Button 3 clicked")
-
-    def button_clicked(self):
-        print("Button clicked")
+    def go_to_log(self):
+        print("LOG SCREEN IN CONSTRUCTION")
 
 if __name__ == "__main__":
     app = Application()
-    app.canvas.bind_action_handler(lambda action: print(action))
-    app.canvas.start_recording()
     app.mainloop()
