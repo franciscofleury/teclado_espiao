@@ -78,6 +78,7 @@ class Application(tk.Tk):
             print(msg)
             msg = msg.strip("()")
             msg = msg.replace(" ", "")
+            msg = msg.replace("'", "")
             action = msg.split(",")
             print(action)
             if action[1] == "PRESSED":
