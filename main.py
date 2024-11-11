@@ -11,7 +11,7 @@ class Application(tk.Tk):
         super().__init__()
 
         self.title("Teclado espião Portal")
-        self.geometry("1920x1080")
+        self.geometry("1920x1000")
 
         self.sidebar = tk.Frame(self, width=300, bg="gray")
         self.sidebar.pack_propagate(False)
@@ -35,7 +35,7 @@ class Application(tk.Tk):
 
         self.routines = {"teste": "", "aaa": "", "bbb":"", "cccccc":"", "ddddd":""}
         self.keyboards = {}
-         
+
         self.frames = {}
         self.topic_handlers = {}
         self.create_frames()
@@ -75,7 +75,7 @@ class Application(tk.Tk):
         self.mqtt_client.loop_misc()
         self.after(20, self.step_mqtt)
 
-    def key_listener_factory(self, keyboard, text_box): 
+    def key_listener_factory(self, keyboard, text_box, f_text_box): 
         def listener(msg):
             msg = msg.payload.decode('utf-8')
             print(msg)
@@ -90,27 +90,52 @@ class Application(tk.Tk):
             elif action[1] == "RELEASED":
                 keyboard.reset_key(action[0])
                 text_box.insert("end", str(action) + " ")
+
+                letter = action[0]
+                
+                if letter == "SPACE":
+                    letter = " "
+                if letter == "CONTROL":
+                    letter = ""
+
+                f_text_box.insert("end", letter)
             else:
                 print(f"ERROR {action}")
         return listener
     
     def create_home_screen(self):
         main_frame = tk.Frame(self.main_container)
-        text_box = tk.Text(main_frame, width=100, height=10, bg="white")
-        text_box.pack(padx=20, pady=20)
+
+        text_frame = tk.Frame(main_frame)
+        text_frame.pack()
+
+        formatted_text_box = tk.Text(text_frame, width=80, height=15, bg="white")
+        formatted_text_box.grid(row=0, column=0, padx=20, pady=20)
+
+        raw_text_box = tk.Text(text_frame, width=80, height=15, bg="white")
+        raw_text_box.grid(row=0, column=1, padx=20, pady=20)
 
         self.keyboards["Home"] = QWERTYKeyboard(self, main_frame, main_frame.winfo_width()/2 + 100, main_frame.winfo_height()/2 + 20)
         self.keyboards["Home"].set_mode("listen")
 
-        self.set_topic_handler(teclas_in, self.key_listener_factory(self.keyboards["Home"], text_box))
+        self.set_topic_handler(teclas_in, self.key_listener_factory(self.keyboards["Home"], raw_text_box, formatted_text_box))
 
         return main_frame
 
     def create_routine_screen(self):
         main_frame = tk.Frame(self.main_container)
-        routine_list = tk.Frame(main_frame, name="routine_list", height=200, relief="solid")
-        routine_list.pack(fill='x', padx=30, pady=30)
+
+        #routine_label = tk.Label(main_frame, text="ROUTINE MANAGEMENT", font=("Arial", 24, "bold"), fg="black")
+        #routine_label.pack(side="top")
+
+        # Creating routine list
+        routine_list = tk.Frame(main_frame, name="routine_list",height=200, relief="solid")
+        routine_list.pack(side="left", padx=10)
         
+        # Creating routine viewer
+        routine_viewer = tk.Text(main_frame)
+        routine_viewer.pack(pady=50)
+
         canvas = tk.Canvas(routine_list, height=800)
         scrollbar = ttk.Scrollbar(routine_list, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -141,7 +166,12 @@ class Application(tk.Tk):
             for child in scrollable_frame.winfo_children():
                 child.destroy()
             for routine in self.routines:
-                btn = ttk.Button(scrollable_frame, text=routine)
+
+                def update_viewer():
+                    routine_viewer.delete("1.0", "end")
+                    routine_viewer.insert("1.0", self.routines[routine])
+
+                btn = ttk.Button(scrollable_frame, text=routine, command=update_viewer)
                 btn.pack(pady=2, padx=5, fill="x")
                 
         # Building routine list
@@ -153,6 +183,7 @@ class Application(tk.Tk):
         
         # Enable mouse wheel scrolling
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
         
 
         def new_routine_screen():
@@ -200,8 +231,12 @@ class Application(tk.Tk):
             save_button = tk.Button(button_frame, text="Save", command=save_routine)
             save_button.grid(row=0, column=3, pady=10)
         # Button to trigger the popup window
-        new_routine_button = tk.Button(main_frame, text="NEW", width=8, height=2, command=new_routine_screen)
-        new_routine_button.pack(side="right", padx=60)
+
+        command_frame = tk.Frame(main_frame, height=100)
+        command_frame.pack(side="bottom", fill="x", pady=100)
+
+        new_routine_button = tk.Button(command_frame, text="NEW", width=8, height=2, command=new_routine_screen)
+        new_routine_button.pack(side="right", padx=30)
 
     
         return main_frame
